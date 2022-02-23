@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup as bs
 import random
 import datetime
 import re as regex
+from hidden import token
 # msg epl table
 # choose your favourite team
 # msg their results
@@ -108,7 +109,7 @@ def write(user_id, message):
     session.method('messages.send', {'user_id': user_id, 'message': message, 'random_id': 0})
 
 
-session = vk_api.VkApi(token="4e489932ddd7cfbf1b065f482f375eae7b8251913f4d596943bafb2cac079177a2ac83ce2ed9bc177f7b6")
+session = vk_api.VkApi(token=token)
 longpoll = VkLongPoll(session)
 users = dict()
 sent = False
