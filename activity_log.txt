@@ -1,0 +1,4 @@
+Bot starting...
+Received new message "Результаты" from user 486354877
+Answering to user 486354877
+Answering to user 486354877
