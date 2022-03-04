@@ -16,7 +16,7 @@ from hidden import token
 class botinok:
 
     def __init__(self, user_id):
-        self.requests = ["любимая команда", "выбрать любимую команду", "результаты", "турнирная таблица", "список возможностей"]
+        self.requests = ["любимая команда", "выбрать любимую команду", "результаты", "турнирная таблица", "список возможностей", "информация"]
         self.eplTeams = ["челси", "манчестер сити", "ливерпуль", "манчестер юнайтед", "вест хэм", "арсенал", "вулверхэмптон", "тоттенхэм", "брайтон", "саутгемптон", "лестер", "астон вилла", "кристал пэлас", "брентфорд", "лидс", "эвертон", "ньюкасл", "уотфорд", "бёрнли", "бернли", "норвич"]
         self.teamLinks = {"челси": "https://soccer365.ru/clubs/184/",
                          "манчестер сити": "https://soccer365.ru/clubs/90/",
@@ -51,6 +51,13 @@ class botinok:
 
     def send(self, message):
         msg = message.lower()
+        if "информация" in msg:
+            got = msg.split()
+            link4 = self.teamLinks[" ".join(got[1:])]
+            soup4 = bs(requests.get(link4).content, features="html.parser")
+            results4 = str(soup4.find_all(class_="profile_wiki"))
+            results4 = results4[results4.find(">") + 1:results4.find("<", 2)]
+            return results4
         if msg not in self.requests:
             if msg in self.eplTeams:
                 with open("activity_log.txt", "a") as f:
