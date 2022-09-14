@@ -1,142 +1,137 @@
+from bs4 import BeautifulSoup as bs
+from PIL import Image, ImageFont, ImageDraw
+import requests
+import urllib
 import vk_api
 from vk_api.longpoll import VkEventType, VkLongPoll
-from vk_api.utils import get_random_id
-from urllib.request import urlopen
-import requests
-from bs4 import BeautifulSoup as bs
-import random
-import datetime
-import re as regex
-from hidden import token
-# msg epl table
-# choose your favourite team
-# msg their results
+from vk_api.upload import VkUpload
+import json
+from io import BytesIO
 
 
-class botinok:
-
-    def __init__(self, user_id):
-        self.requests = ["любимая команда", "выбрать любимую команду", "результаты", "турнирная таблица", "список возможностей", "информация"]
-        self.eplTeams = ["челси", "манчестер сити", "ливерпуль", "манчестер юнайтед", "вест хэм", "арсенал", "вулверхэмптон", "тоттенхэм", "брайтон", "саутгемптон", "лестер", "астон вилла", "кристал пэлас", "брентфорд", "лидс", "эвертон", "ньюкасл", "уотфорд", "бёрнли", "бернли", "норвич"]
-        self.teamLinks = {"челси": "https://soccer365.ru/clubs/184/",
-                         "манчестер сити": "https://soccer365.ru/clubs/90/",
-                         "ливерпуль": "https://soccer365.ru/clubs/79/",
-                         "манчестер юнайтед": "https://soccer365.ru/clubs/92/",
-                         "вест хэм": "https://soccer365.ru/clubs/33/",
-                         "арсенал": "https://soccer365.ru/clubs/2/",
-                         "вулверхэмптон": "https://soccer365.ru/clubs/41/",
-                         "тоттенхэм": "https://soccer365.ru/clubs/163/",
-                         "брайтон": "https://soccer365.ru/clubs/265/",
-                         "саутгемптон": "https://soccer365.ru/clubs/759/",
-                         "лестер": "https://soccer365.ru/clubs/77/",
-                         "астон вилла": "https://soccer365.ru/clubs/214/",
-                         "кристал пэлас": "https://soccer365.ru/clubs/67/",
-                         "брентфорд": "https://soccer365.ru/clubs/6997/",
-                         "лидс": "https://soccer365.ru/clubs/6930/",
-                         "эвертон": "https://soccer365.ru/clubs/191/",
-                         "ньюкасл": "https://soccer365.ru/clubs/210/",
-                         "уотфорд": "https://soccer365.ru/clubs/6978/",
-                         "бёрнли": "https://soccer365.ru/clubs/6983/",
-                         "бернли": "https://soccer365.ru/clubs/6983/",
-                         "норвич": "https://soccer365.ru/clubs/227/"}
-        self.uid = user_id
-        self.name = self.userName(user_id)
-        self.favTeam = "челси"
-
-    def userName(self, user_id):
-        link1 = f"https://vk.com/id{user_id}"
-        page = bs(requests.get(link1).content, features="html.parser")
-        re = page.find_all("title")[0]
-        return re.text.replace("<", "").replace(">", "")
-
-    def send(self, message):
-        msg = message.lower()
-        if "информация" in msg:
-            got = msg.split()
-            link4 = self.teamLinks[" ".join(got[1:])]
-            soup4 = bs(requests.get(link4).content, features="html.parser")
-            results4 = str(soup4.find_all(class_="profile_wiki"))
-            results4 = results4[results4.find(">") + 1:results4.find("<", 2)]
-            return results4
-        if msg not in self.requests:
-            if msg in self.eplTeams:
-                with open("activity_log.txt", "a") as f:
-                    f.write(f"User {self.uid} has chosen new favourite team {msg} instead of {self.favTeam}\n")
-                self.favTeam = msg
-                return "Теперь это твоя новая любимая команда"
-            return f'{random.choice(["Что-то на непонятном", "Я не понял...", "Ты это мне?", "Ты имел ввиду что-то другое?"])}. Чтобы узнать о возможностях бота напиши "список возможностей"'
-        if msg == "выбрать любимую команду":
-            re = "Выбери команду (писать строго так, как указано в списке ниже):"
-            for i in self.eplTeams:
-                re += f"\n{i.title()}"
-            return re
-        if msg == "турнирная таблица":
-            link2 = "https://m.sports.ru/epl/table/"
-            soup2 = bs(requests.get(link2).content, features="html.parser")
-            results2 = [i.text for i in soup2.find_all("a") if i.text.lower() in self.eplTeams]
-            re = f"Турнирная таблица АПЛ на {str(datetime.date.today()).replace('-', '.')}:"
-            for i, x in enumerate(results2):
-                re += f"\n{i + 1} - {x}"
-            return re
-        if msg == "результаты":
-            link3 = self.teamLinks[self.favTeam]
-            soup3 = bs(requests.get(link3).content, features="html.parser")
-            results3 = soup3.find_all(class_="block_body_nopadding")[0].text.replace("\n", "").split("\xa0")
-            de = "Прошедшие матчи:"
-            re = "\nПредстоящие матчи:"
-            cre, cde = 0, 0
-            for i, x in enumerate(results3[:-1]):
-                if cre == 3 and cde == 3:
-                    break
-                if "Премьер-Лига" in results3[i + 1] and "-" in x[x.find(","):] and cre < 3:
-                    _ = regex.sub(r"(\w)([А-Я])", r"\1 \2", x[x.find(',') + 2:])
-                    re += f"\n{x[x.find(',') - 5:x.find(',')]} {_}"
-                    cre += 1
-                elif "Премьер-Лига" in results3[i + 1] and "-" not in x[x.find(","):] and cde < 3:
-                    _ = regex.sub(r"(\w)([А-Я])", r"\1 \2", x[x.find(',') + 2:])
-                    de += f"\n{x[x.find(',') - 5:x.find(',')]} {_}"
-                    cde += 1
-            return de + re
-        if msg == "любимая команда":
-            return f"Сейчас твоя любимая команда - {self.favTeam.title()}"
-        if msg == "список возможностей":
-            return "Возможности ботинка (команда - действие):\n" \
-                   "Ботинок рассылает результаты вашей любимой команды (об этом ниже) и уведомляет о будущих играх каждое утро.\n" \
-                   "Выбрать любимую команду - Обновить/Задать вашу любимую команду АПЛ.\n" \
-                   "Результаты - Получить последние результаты вашей любимой команды.\n" \
-                   "Турнирная таблица - Вывести таблицу АПЛ.\n" \
-                   "Любимая команда - Вывести вашу нынешнюю любимую команду.\n" \
-                   "Информация <команда> - Получить краткую информацию о команде." \
-                   "Пока что это всё, но в скором будущем я добавлю другие лиги и возможности... возможно."
-        return f'{random.choice(["Что-то на непонятном", "Я не понял...", "Ты это мне?", "Ты имел ввиду что-то другое?"])}. Чтобы узнать о возможностях бота напиши "список возможностей"'
+def add_text(text, name):
+    font = ImageFont.truetype("NotoSerif-Bold.ttf", 60)
+    title_font = ImageFont.truetype("NotoSerif-Bold.ttf", 110)
+    name_font = ImageFont.truetype("NotoSerif-Regular.ttf", 45)
+    array_text = text.split()
+    re = ""
+    cur = 0
+    for i in array_text:
+        # print(cur, i)
+        cur += len(i) + 1
+        re += i + " "
+        if cur >= 30:
+            re += "\n"
+            cur = 0
+    # print(re)
+    text = re
+    # for i in text:
+    #
+    editable.text((230, 130), "Великие цитаты пумовцев", fill=(255, 255, 255), font=title_font) #title = const
+    editable.text((650, 400), text, fill=(255, 255, 255), font=font) # quote
+    editable.text((145, 905), name, fill=(255, 255, 255), font=name_font)
 
 
-def write(user_id, message):
-    with open("activity_log.txt", "a") as f:
-        f.write(f'Answering to user {event.user_id}\n')
-    session.method('messages.send', {'user_id': user_id, 'message': message, 'random_id': 0})
+def add_image(ph):
+    global new_quote
+
+    if "sun" in ph:
+        response = requests.get(ph)
+        im = Image.open(BytesIO(response.content))
+    else:
+        # print("here")
+        im = Image.open("noava.jpg")
+    im = im.convert("RGB")
+    im = im.resize((520, 520))
+    bigsize = (im.size[0] * 3, im.size[1] * 3)
+    mask = Image.new('L', bigsize, 0)
+    draw = ImageDraw.Draw(mask)
+    draw.ellipse((0, 0) + bigsize, fill=255)
+    mask = mask.resize(im.size, Image.ANTIALIAS)
+    im.putalpha(mask)
+    # print(im.mode)
+    im.save("new_ava.png")
+
+    img = Image.open("new_ava.png")
+    new_quote = new_quote.convert("RGBA")
+    img = img.convert("RGBA")
+    new_quote.paste(img, (75, 375), img)
 
 
+def upload_photo(upload, photo):
+    response = upload.photo_messages(photo)[0]
+
+    owner_id = response['owner_id']
+    photo_id = response['id']
+    access_key = response['access_key']
+
+    return owner_id, photo_id, access_key
+
+
+def send_photo(vk, peer_id, owner_id, photo_id, access_key):
+    # print(peer_id)
+    attachment = f'photo{owner_id}_{photo_id}_{access_key}'
+    # print(attachment)
+    session.get_api().messages.send(
+        random_id=0,
+        peer_id=peer_id,
+        message="Вот твоя цитата! Кидай в предложку, если хотел бы выложить её в группе!",
+        attachment=attachment)
+
+
+app = "vk1.a.gskMOJQIPmk3hm2Koe8cChpQl-_r51n_8CYK5VxMb5ogmjZFVCyR4MztvYAsWsWSMppuxBEzADyQKnheROpqQwuVwStAsOAUj1mmUeRZ_q0M0oEuZ6woBUcSq9swiu-vnhgJpPEOsMjUfjOuPnV_E73GJPvJHB7UyHdxuLz_akwJ8jxAkuJt--sBalW96FIP" # через токен приложения upload
+token = "vk1.a.yrLesQ_QLTPvKtytKkM45j2rouJvOZT7zCJBHttBKUNCW2eo-Lv_8TJU-O-CPgREQFbITMMSaI1E2Chcdb8a8WnQLaN-SFK1W0NYqYxP1GV2MSODkBdWMWKZ1BjI-jjZ4wsZwCsSx0jqTeu1mIU0Gwd9bEZV_b7y_rplgB17t1a6rsJsrY1IUSeWCgoBO9Sp"
 session = vk_api.VkApi(token=token)
-longpoll = VkLongPoll(session)
-users = dict()
-sent = False
-with open("activity_log.txt", "w", encoding="utf-8") as f:
-    f.write("Bot starting...\n")
-for event in longpoll.listen():
+lp = VkLongPoll(session)
+for event in lp.listen():
     if event.type == VkEventType.MESSAGE_NEW:
         if event.to_me:
-            with open("activity_log.txt", "a") as f:
-               f.write(f'Received new message "{event.text}" from user {event.user_id}\n')
-            if event.user_id not in users:
-                users[event.user_id] = botinok(event.user_id)
-            bot = users[event.user_id]
-            write(event.user_id, users[event.user_id].send(event.text))
-    if str(datetime.datetime.now().time()).split(":")[0:2] == ["09", "00"] and not sent:
-        sent = True
-        if event.user_id not in users:
-            users[event.user_id] = botinok(event.user_id)
-        bot = users[event.user_id]
-        write(event.user_id, f"Доброе утро, {' '.join(bot.userName(event.user_id).split()[0:2])}! Результаты матчей команды {bot.favTeam}:\n{bot.send('результаты')}")
-    if str(datetime.datetime.now().time()).split(":")[0:2] == ["00", "00"]:
-        sent = False
+            try:
+                # print(event.user_id)
+                final = event.message.split("\n")
+                # print(final)
+                # print(event.message)
+                if len(final) < 2 or "@" not in event.message:
+                    session.get_api().messages.send(
+                        random_id=0,
+                        peer_id=event.peer_id,
+                        message="Кажется вами не был соблюдён формат цитаты. Следите за оформлением, пригодится при сдаче ЕГЭ)")
+                    raise OverflowError
+                quote = final[0]
+                user_id = final[1][3:final[1].find("|")]
+                re = requests.get("https://api.vk.com/method/users.get", params={
+                    "access_token": token,
+                    "user_ids": user_id,
+                    "fields": "photo_max_orig",
+                    "v": 5.131
+                })
+                data = json.loads(re.text)
+                # print(f"Creating quote sent by {event.user_id}", end = " ")
+                # print(data)
+                if not len(data["response"]):
+                    continue
+                container = data["response"][0]
+                name = f"{container['first_name']} {container['last_name']}"
+                photo = container["photo_max_orig"]
+                # print(photo)
+                new_quote = Image.open("back.png")
+                new_quote = new_quote.resize((2048, 1152))
+                new_quote = new_quote.convert("RGB")
+                editable = ImageDraw.Draw(new_quote)
+
+                add_text(quote, name)
+                add_image(photo)
+                new_quote.save("quote.png")
+
+                session_app = vk_api.VkApi(token=app)
+                upload = VkUpload(session_app.get_api())
+                send_photo(session_app.get_api(), event.user_id, *upload_photo(upload, 'quote.png'))
+                # print("d", end=" ")
+            except OverflowError:
+                pass
+            except:
+                print(f"\nError with a quote from {event.user_id}. Fix ASAP.")
+                session.get_api().messages.send(
+                        random_id=0,
+                        peer_id=event.peer_id,
+                        message="При генерации цитаты возникла непредвиденная ошибка или вами не был соблюдён формат цитаты. В скором времени мы решим проблему. Спасибо, что помогаете нам улучшать генератор, пока он находится в режиме тестирования!")
